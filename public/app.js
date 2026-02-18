@@ -26,12 +26,12 @@ async function fetchTodos() {
 // Add a new todo
 async function addTodo() {
     const text = todoInput.value.trim();
-    
+
     if (!text) {
         alert('Please enter a todo');
         return;
     }
-    
+
     try {
         const response = await fetch(API_BASE, {
             method: 'POST',
@@ -40,7 +40,7 @@ async function addTodo() {
             },
             body: JSON.stringify({ text }),
         });
-        
+
         if (response.ok) {
             const newTodo = await response.json();
             todos.push(newTodo);
@@ -61,7 +61,7 @@ async function toggleTodo(id) {
         const response = await fetch(`${API_BASE}/${id}`, {
             method: 'PUT',
         });
-        
+
         if (response.ok) {
             const updatedTodo = await response.json();
             const index = todos.findIndex(t => t.id === id);
@@ -78,13 +78,52 @@ async function toggleTodo(id) {
     }
 }
 
+// Edit a todo
+async function editTodo(id) {
+    const todo = todos.find(t => t.id === id);
+    if (!todo) return;
+
+    const newText = prompt('Edit todo:', todo.text);
+    if (newText === null) return;
+
+    const trimmedText = newText.trim();
+    if (!trimmedText) {
+        alert('Please enter a valid todo text');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_BASE}/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ text: trimmedText }),
+        });
+
+        if (response.ok) {
+            const updatedTodo = await response.json();
+            const index = todos.findIndex(t => t.id === id);
+            if (index !== -1) {
+                todos[index] = updatedTodo;
+                renderTodos();
+            }
+        } else {
+            alert('Failed to update todo');
+        }
+    } catch (error) {
+        console.error('Error updating todo:', error);
+        alert('Failed to update todo');
+    }
+}
+
 // Delete a todo
 async function deleteTodo(id) {
     try {
         const response = await fetch(`${API_BASE}/${id}`, {
             method: 'DELETE',
         });
-        
+
         if (response.ok) {
             todos = todos.filter(t => t.id !== id);
             renderTodos();
@@ -111,11 +150,12 @@ function renderTodos() {
                     onchange="toggleTodo(${todo.id})"
                 />
                 <span class="todo-text">${escapeHtml(todo.text)}</span>
+                <button class="edit-btn" onclick="editTodo(${todo.id})">Edit</button>
                 <button class="delete-btn" onclick="deleteTodo(${todo.id})">Delete</button>
             </div>
         `).join('');
     }
-    
+
     updateStats();
 }
 

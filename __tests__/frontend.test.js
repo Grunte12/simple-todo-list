@@ -50,7 +50,7 @@ describe('Frontend Todo Application', () => {
   describe('renderTodos function', () => {
     test('should show empty state when no todos', () => {
       const todos = [];
-      
+
       if (todos.length === 0) {
         todoList.innerHTML = '<div class="empty-state">No todos yet. Add one above!</div>';
       }
@@ -108,7 +108,7 @@ describe('Frontend Todo Application', () => {
 
     test('should show zero stats for empty list', () => {
       const todos = [];
-      
+
       const total = todos.length;
       const completed = todos.filter(t => t.completed).length;
       totalCount.textContent = `Total: ${total}`;
@@ -151,14 +151,14 @@ describe('Frontend Todo Application', () => {
   describe('addTodo function', () => {
     test('should add a new todo', async () => {
       const newTodo = { id: 1, text: 'New todo', completed: false };
-      
+
       fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => newTodo
       });
 
       todoInput.value = 'New todo';
-      
+
       const response = await fetch('/api/todos', {
         method: 'POST',
         headers: {
@@ -175,7 +175,7 @@ describe('Frontend Todo Application', () => {
     test('should not add empty todo', () => {
       todoInput.value = '';
       const text = todoInput.value.trim();
-      
+
       if (!text) {
         alert('Please enter a todo');
       }
@@ -186,7 +186,7 @@ describe('Frontend Todo Application', () => {
     test('should not add whitespace-only todo', () => {
       todoInput.value = '   ';
       const text = todoInput.value.trim();
-      
+
       if (!text) {
         alert('Please enter a todo');
       }
@@ -200,7 +200,7 @@ describe('Frontend Todo Application', () => {
       });
 
       todoInput.value = 'New todo';
-      
+
       const response = await fetch('/api/todos', {
         method: 'POST',
         headers: {
@@ -220,7 +220,7 @@ describe('Frontend Todo Application', () => {
   describe('toggleTodo function', () => {
     test('should toggle todo completion', async () => {
       const updatedTodo = { id: 1, text: 'Test todo', completed: true };
-      
+
       fetch.mockResolvedValueOnce({
         ok: true,
         json: async () => updatedTodo
@@ -286,11 +286,92 @@ describe('Frontend Todo Application', () => {
     });
   });
 
+  describe('editTodo function', () => {
+    beforeEach(() => {
+      global.prompt = jest.fn();
+    });
+
+    afterEach(() => {
+      global.prompt.mockReset();
+    });
+
+    test('should edit a todo', async () => {
+      const todoId = 1;
+      const oldText = 'Old Text';
+      const newText = 'New Text';
+      const updatedTodo = { id: todoId, text: newText, completed: false };
+
+      global.prompt.mockReturnValue(newText);
+
+      fetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => updatedTodo
+      });
+
+      // Simulation context
+      let todos = [{ id: 1, text: oldText, completed: false }];
+
+      // Replicate logic
+      async function editTodo(id) {
+        const todo = todos.find(t => t.id === id);
+        if (!todo) return;
+
+        const text = global.prompt('Edit todo:', todo.text);
+        if (text === null) return;
+
+        const trimmedText = text.trim();
+        if (!trimmedText) return;
+
+        const response = await fetch(`/api/todos/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: trimmedText }),
+        });
+
+        if (response.ok) {
+          const updated = await response.json();
+          const index = todos.findIndex(t => t.id === id);
+          if (index !== -1) {
+            todos[index] = updated;
+          }
+        }
+      }
+
+      await editTodo(todoId);
+
+      expect(global.prompt).toHaveBeenCalledWith('Edit todo:', oldText);
+      expect(fetch).toHaveBeenCalledWith(`/api/todos/${todoId}`, expect.objectContaining({
+        method: 'PUT',
+        body: JSON.stringify({ text: newText })
+      }));
+      expect(todos[0].text).toBe(newText);
+    });
+
+    test('should validate empty input', async () => {
+      global.prompt.mockReturnValue('   ');
+      let todos = [{ id: 1, text: 'Old', completed: false }];
+
+      async function editTodo(id) {
+        const todo = todos.find(t => t.id === id);
+        const text = global.prompt('Edit todo:', todo.text);
+        const trimmedText = text && text.trim();
+
+        if (!trimmedText) {
+          alert('Please enter a valid todo text');
+          return;
+        }
+      }
+
+      await editTodo(1);
+      expect(alert).toHaveBeenCalledWith('Please enter a valid todo text');
+    });
+  });
+
   describe('Input validation', () => {
     test('should trim whitespace from input', () => {
       todoInput.value = '  Test todo  ';
       const text = todoInput.value.trim();
-      
+
       expect(text).toBe('Test todo');
     });
 
@@ -301,7 +382,7 @@ describe('Frontend Todo Application', () => {
         div.textContent = text;
         return div.innerHTML;
       };
-      
+
       const escaped = escapeHtml(specialText);
       expect(escaped).not.toContain('<script>');
     });
