@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
-    "test": "cross-env NODE_OPTIONS=--localstorage-file=./jest-ls jest --coverage",
+    "test": "jest --coverage",
     "test:watch": "jest --watch"
   },
   "keywords": [
